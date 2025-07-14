@@ -1,6 +1,7 @@
 {
   "$schema": "node_modules/wrangler/config-schema.json",
   "name": "mithran-0512",
+  "account_id": "798581e4c29e3f5d4a9807ecac1718af",
   "main": "./src/worker/index.ts",
   "compatibility_date": "2025-04-01",
   "compatibility_flags": ["nodejs_compat"],
