@@ -22,7 +22,8 @@
   "d1_databases": [
     {
       "binding": "MITH_DB",
-      "database_name": "mith"
+      "database_name": "mith",
+      "database_id": "a73c7366-1699-41d9-9f58-d00eb7500307",
     }
   ],
 }
