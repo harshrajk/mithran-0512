@@ -12,6 +12,11 @@ app.use("*", cors());
 
 app.get("/api/", (c) => c.json({ name: "Cloudflare" }));
 
+app.get("/api/lists", async (c) => {
+    const result = await c.env.MITH_DB.prepare("SELECT * FROM lists").all();
+    return c.json(result.results);
+});
+
 app.post("/api/new", async (c) => {
     const form = await c.req.formData();
 

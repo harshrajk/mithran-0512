@@ -1,10 +1,24 @@
 import { Link } from "react-router-dom";
+import { useEffect, useState } from "react";
+
+type List = {
+  id: string;
+  title: string;
+  category: string;
+
+};
 
 export default function Home() {
-  const dummyLists = [
-    { id: "1", title: "Top 10 Sci-Fi Movies", category: "Movies" },
-    { id: "2", title: "Top 10 Travel Spots", category: "Destinations" },
-  ];
+
+  const [lists, setLists] = useState<List[]>([]);
+
+  // Fetch lists from server
+  useEffect(() => {
+    fetch("/api/lists")
+      .then((res) => res.json())
+      .then((data) => setLists(data))
+      .catch((err) => console.error("Error fetching lists:", err));
+  }, []);
 
   return (
     <div className="min-h-screen px-4 py-8 align-items-center bg-gray-100">
@@ -20,7 +34,7 @@ export default function Home() {
         </header>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-          {dummyLists.map((list) => (
+          {lists.map((list) => (
             <div
               key={list.id}
               className="bg-white rounded-xl shadow-md p-6 hover:shadow-lg transition"
