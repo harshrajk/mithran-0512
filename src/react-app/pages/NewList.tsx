@@ -37,10 +37,25 @@ export default function NewList() {
         let formData = new FormData();
         formData.append("title", title);
         formData.append("category", category);
+
         items.forEach((item) => {
-            formData.append("items[]", JSON.stringify(item));
-            if (item.imageFile) {
-                formData.append("images", item.imageFile);
+            const { id, title, description, position } = item;
+            const imageFile = item.imageFile;
+
+            // Create item object without imageFile
+            const itemPayload = {
+                id,
+                title,
+                description,
+                position,
+                imageUrl: '',        // If you're not using external image URL
+                externalUrl: ''      // Optional, keep it empty or provide value
+            };
+
+            formData.append('items[]', JSON.stringify(itemPayload));
+
+            if (imageFile instanceof File) {
+                formData.append('images[]', imageFile);
             }
         });
         // TODO: Upload files and send full payload to backend
@@ -73,8 +88,8 @@ export default function NewList() {
     };
 
     const setOtherCategory = (value: string) => {
-        if(value.trim() === "") return; // Prevent empty category
-         // Set other category in lower case and camelCase
+        if (value.trim() === "") return; // Prevent empty category
+        // Set other category in lower case and camelCase
         setCategory(value.toLowerCase().replace(/\s+/g, '_'));
         setOtherSelection(false);
     }
@@ -125,7 +140,7 @@ export default function NewList() {
                                     className="w-full border rounded-md p-2"
                                     value={category}
                                     onChange={(e) => setOtherCategory(e.target.value)}
-                                />  
+                                />
                             </div>
                         )
                     }
