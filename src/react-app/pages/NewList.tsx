@@ -15,7 +15,7 @@ export default function NewList() {
     const [category, setCategory] = useState("");
     const [otherSelection, setOtherSelection] = useState(false);
     const [items, setItems] = useState<ListItem[]>(
-        Array.from({ length: 10 }, (_, i) => ({
+        Array.from({ length: 3 }, (_, i) => ({
             id: `item-${i + 1}`,
             position: i + 1,
             title: "",

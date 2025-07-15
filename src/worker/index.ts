@@ -20,7 +20,7 @@ app.post("/api/new", async (c) => {
     const items: any[] = [];
 
     // Collect list items
-    for (let i = 0; i < 10; i++) {
+    for (let i = 0; i < 3; i++) {
         const prefix = `items[${i}]`;
 
         const title = form.get(`${prefix}[title]`)?.toString() ?? "";
@@ -36,11 +36,16 @@ app.post("/api/new", async (c) => {
         if (file instanceof File && file.size > 0) {
             const key = `lists/${Date.now()}_${i}_${file.name}`;
             const buffer = await file.arrayBuffer();
-            await c.env.MITH_BUCKET.put(key, buffer, {
-                httpMetadata: { contentType: file.type }
-            });
-
-            finalImageUrl = `https://798581e4c29e3f5d4a9807ecac1718af.r2.cloudflarestorage.com/assets/${key}`; // Replace with your actual R2 public URL
+            try {
+                await c.env.MITH_BUCKET.put(key, buffer, {
+                    httpMetadata: { contentType: file.type }
+                });
+            } catch (error) {
+                console.error("Error uploading file to R2:", error);
+            }
+            finalImageUrl = `https://assets.decalist.xyz/${key}`; // Replace with your actual R2 public URL
+        } else {
+            console.log(`No file uploaded for item ${i + 1}, using provided imageUrl: ${imageUrl}`);
         }
 
         items.push({
