@@ -19,10 +19,10 @@ app.post("/api/new", async (c) => {
     const items = form.getAll('items[]').map(item => JSON.parse(item as string));
     const images = form.getAll('images[]'); // Array of File objects (Blob)
 
-    const finalItems : any[] = [];
+    const finalItems: any[] = [];
 
     items.forEach(async (item, index) => {
-        
+
         const image = images[index];
 
         if (image instanceof File && image.size > 0) {
@@ -43,14 +43,14 @@ app.post("/api/new", async (c) => {
         finalItems.push({
             title: item.title ?? "",
             description: item.description ?? "",
-            position : item.position ?? 0,
-            image_url: item.image_url ?? "", // Use the uploaded image URL or the provided one
-            external_url: item.externalUrl ?? "",
+            position: item.position ?? 0,
+            image_url: item.image_url ? item.image_url : null, // Use the uploaded image URL or the provided one
+            external_url: item.externalUrl ? item.externalUrl : null,
         });
-        
+
     });
 
-   
+
 
     // Insert into `lists` table
     const result = await c.env.MITH_DB
@@ -60,8 +60,10 @@ app.post("/api/new", async (c) => {
 
     const listId = result.meta.last_row_id;
 
+
     // Insert each list item
     for (const item of items) {
+
         await c.env.MITH_DB.prepare(`
                 INSERT INTO list_items 
                 (list_id, position, title, description, image_url, external_url)
@@ -69,11 +71,11 @@ app.post("/api/new", async (c) => {
                 `)
             .bind(
                 listId,
-                item.position,
-                item.title,
-                item.description,
-                item.image_url,
-                item.external_url
+                item.position ?? null,
+                item.title ?? null,
+                item.description ?? null,
+                item.image_url ?? null,
+                item.external_url ?? null
             )
             .run();
     }

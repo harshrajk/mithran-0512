@@ -39,7 +39,7 @@ export default function NewList() {
         formData.append("category", category);
 
         items.forEach((item) => {
-            const { id, title, description, position } = item;
+            const { id, title, description, position, externalUrl, imageUrl } = item;
             const imageFile = item.imageFile;
 
             // Create item object without imageFile
@@ -48,8 +48,8 @@ export default function NewList() {
                 title,
                 description,
                 position,
-                imageUrl: '',        // If you're not using external image URL
-                externalUrl: ''      // Optional, keep it empty or provide value
+                imageUrl,        // If you're not using external image URL
+                externalUrl      // Optional, keep it empty or provide value
             };
 
             formData.append('items[]', JSON.stringify(itemPayload));
