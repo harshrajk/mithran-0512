@@ -35,16 +35,22 @@ app.post("/api/new", async (c) => {
             } catch (error) {
                 console.error("Error uploading file to R2:", error);
             }
-            item.image_url = `https://assets.decalist.xyz/${key}`; // Replace with your actual R2 public URL
+             // Replace with your actual R2 public URL
+             item.imageUrl = `https://assets.decalist.xyz/${key}`;
+
+             console.log('File uploaded successfully:', item.imageUrl);
+             
         } else {
             console.log(`No file uploaded for item ${index + 1}, using provided imageUrl: ${item.image_url}`);
         }
 
+        console.log('Image URL:', item.imageUrl);
+        
         finalItems.push({
             title: item.title ?? "",
             description: item.description ?? "",
             position: item.position ?? 0,
-            image_url: item.image_url ? item.image_url : null, // Use the uploaded image URL or the provided one
+            image_url: item.imageUrl ? item.imageUrl : null, // Use the uploaded image URL or the provided one
             external_url: item.externalUrl ? item.externalUrl : null,
         });
 
@@ -63,6 +69,7 @@ app.post("/api/new", async (c) => {
 
     // Insert each list item
     for (const item of items) {
+
 
         await c.env.MITH_DB.prepare(`
                 INSERT INTO list_items 
