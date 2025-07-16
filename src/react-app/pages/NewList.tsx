@@ -8,7 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '.
 import { Badge } from '../../components/ui/badge';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '../../components/ui/collapsible';
 import { Separator } from '../../components/ui/separator';
-import { AlertCircle, ChevronDown, ChevronUp, Image, Link, Plus, Sparkles, Trophy, Upload } from 'lucide-react';
+import { ChevronDown, ChevronUp, Image, Link, Sparkles, Trophy, Upload } from 'lucide-react';
 
 type ListItem = {
     id: string;

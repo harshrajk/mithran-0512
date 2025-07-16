@@ -1,7 +1,7 @@
 import { Link } from "react-router-dom";
 import { useEffect, useState } from "react";
 import { Button } from "../../components/ui/button";
-import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "../../components/ui/card";
+import { Card, CardHeader, CardTitle, CardContent } from "../../components/ui/card";
 import { Trophy, Sparkles, Plus } from "lucide-react";
 import { Badge } from "../../components/ui/badge";
 
