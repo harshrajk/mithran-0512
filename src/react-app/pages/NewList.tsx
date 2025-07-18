@@ -1,118 +1,142 @@
-import React, { useState } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../../components/ui/card';
 import { Button } from '../../components/ui/button';
 import { Input } from '../../components/ui/input';
 import { Label } from '../../components/ui/label';
 import { Textarea } from '../../components/ui/textarea';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../../components/ui/select';
-import { Badge } from '../../components/ui/badge';
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '../../components/ui/collapsible';
+import { SearchSelect } from '../../components/ui/search-select';
 import { Separator } from '../../components/ui/separator';
-import { ChevronDown, ChevronUp, Image, Link, Sparkles, Trophy, Upload } from 'lucide-react';
+import { Sparkles, Trophy, X, Search, Plus } from 'lucide-react';
+import {debounce} from '../../lib/utils';
+import cats from '../../lib/categories.json'
+import { EntityResult, EntitySearchResponse } from '../../lib/searchResultTypes';
+
 
 type ListItem = {
     id: string;
     position: number;
     title: string;
     description: string;
-    imageFile?: File;
     imageUrl?: string;
-    externalUrl: string;
+    externalUrl?: string;
+};
+
+
+// Mock search API function - replace with your actual API call
+const mockSearchAPI = async (query: string, category: string): Promise<EntitySearchResponse[]> => {
+    if (!query) return [];
+    
+    // Simulate API delay
+    const results = await fetch(`/api/search?q=${encodeURIComponent(query)}&type=${category}`);
+    const data = await results.json();
+
+    return data.results || [];
 };
 
 export default function CreativeTop10Creator() {
     const [title, setTitle] = useState("");
     const [category, setCategory] = useState("");
-    const [otherSelection, setOtherSelection] = useState(false);
-    const [items, setItems] = useState<ListItem[]>(
-        Array.from({ length: 3 }, (_, i) => ({
-            id: `item-${i + 1}`,
-            position: i + 1,
-            title: "",
+    const [items, setItems] = useState<ListItem[]>([]);
+    const [searchQuery, setSearchQuery] = useState("");
+    const [searchResults, setSearchResults] = useState<EntityResult[]>([]);
+    const [isSearching, setIsSearching] = useState(false);
+    const [activeEditItem, setActiveEditItem] = useState<string | null>(null);
+
+    const categories : Array<{value: string, label: string}> = cats.categories;
+
+    // Debounced search function
+    const debouncedSearch = useCallback(
+        debounce(async (query: string, category: string) => {
+            if (!query || !category) {
+                setSearchResults([]);
+                return;
+            }
+            
+            setIsSearching(true);
+            try {
+                const results : any = await mockSearchAPI(query, category);
+                setSearchResults(results);
+            } catch (error) {
+                console.error("Search failed:", error);
+                setSearchResults([]);
+            } finally {
+                setIsSearching(false);
+            }
+        }, 500),
+        []
+    );
+
+    useEffect(() => {
+        debouncedSearch(searchQuery, category);
+    }, [searchQuery, category, debouncedSearch]);
+
+    const handleAddItem = (result: EntityResult) => {
+        const newItem: ListItem = {
+            id: `item-${Date.now()}`,
+            position: items.length + 1,
+            title: result.result.name,
+            description: result?.result.detailedDescription?.articleBody || result.result.description,
+            imageUrl: result?.result.image?.contentUrl || "",
+            externalUrl: result?.result.url || ""
+        };
+        
+        setItems([...items, newItem]);
+        setSearchQuery("");
+        setSearchResults([]);
+    };
+
+    const handleManualAdd = () => {
+        const newItem: ListItem = {
+            id: `item-${Date.now()}`,
+            position: items.length + 1,
+            title: searchQuery,
             description: "",
             imageUrl: "",
-            externalUrl: "",
-        }))
-    );
-    const [openItems, setOpenItems] = useState<Set<number>>(new Set([0]));
+            externalUrl: ""
+        };
+        
+        setItems([...items, newItem]);
+        setSearchQuery("");
+        setSearchResults([]);
+    };
 
-    const categories = [
-        { value: 'movies', label: '🎬 Movies', gradient: 'from-red-500 to-pink-500' },
-        { value: 'tv_shows', label: '📺 TV Shows', gradient: 'from-blue-500 to-purple-500' },
-        { value: 'books', label: '📚 Books', gradient: 'from-green-500 to-teal-500' },
-        { value: 'destinations', label: '🌍 Destinations', gradient: 'from-orange-500 to-red-500' },
-        { value: 'goals', label: '🎯 Goals', gradient: 'from-purple-500 to-indigo-500' },
-        { value: 'music', label: '🎵 Music', gradient: 'from-pink-500 to-rose-500' },
-        { value: 'games', label: '🎮 Games', gradient: 'from-indigo-500 to-blue-500' },
-        { value: 'food', label: '🍕 Food', gradient: 'from-yellow-500 to-orange-500' },
-        { value: 'hobbies', label: '🎨 Hobbies', gradient: 'from-teal-500 to-cyan-500' },
-        { value: 'other', label: '✨ Other', gradient: 'from-gray-500 to-slate-500' }
-    ];
+    const handleItemChange = (id: string, field: keyof ListItem, value: any) => {
+        setItems(items.map(item => 
+            item.id === id ? { ...item, [field]: value } : item
+        ));
+    };
 
-    const handleItemChange = (index: number, field: keyof ListItem, value: any) => {
-        const updated = [...items];
-        (updated[index] as any)[field] = value;
-        setItems(updated);
+    const handleRemoveItem = (id: string) => {
+        setItems(items.filter(item => item.id !== id));
+    };
+
+    const handlePositionChange = (id: string, newPosition: number) => {
+        // Ensure position is between 1 and 10
+        newPosition = Math.max(1, Math.min(10, newPosition));
+        
+        // Update all positions
+        const updatedItems = [...items];
+        const itemIndex = updatedItems.findIndex(item => item.id === id);
+        
+        if (itemIndex === -1) return;
+        
+        // Swap positions if needed
+        const existingItemWithPosition = updatedItems.find(item => item.position === newPosition);
+        if (existingItemWithPosition) {
+            existingItemWithPosition.position = updatedItems[itemIndex].position;
+        }
+        
+        updatedItems[itemIndex].position = newPosition;
+        
+        // Sort by position
+        setItems(updatedItems.sort((a, b) => a.position - b.position));
     };
 
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
-
-        let formData = new FormData();
-        formData.append("title", title);
-        formData.append("category", category);
-
-        items.forEach((item) => {
-            const { id, title, description, position, externalUrl, imageUrl } = item;
-            const imageFile = item.imageFile;
-
-            const itemPayload = {
-                id,
-                title,
-                description,
-                position,
-                imageUrl,
-                externalUrl
-            };
-
-            formData.append('items[]', JSON.stringify(itemPayload));
-
-            if (imageFile instanceof File) {
-                formData.append('images[]', imageFile);
-            }
-        });
-
-        // Simulated API call
-        console.log("Submitting form data:", formData);
-        alert("List created successfully! (This is a demo)");
+        console.log("Submitting list:", { title, category, items });
+        alert("List created successfully!");
     };
-
-    const manageSetCategory = (value: string) => {
-        if (value === "other") {
-            setOtherSelection(true);
-        } else {
-            setCategory(value);
-            setOtherSelection(false);
-        }
-    };
-
-    const setOtherCategory = (value: string) => {
-        if (value.trim() === "") return;
-        setCategory(value.toLowerCase().replace(/\s+/g, '_'));
-        setOtherSelection(false);
-    };
-
-    const toggleItem = (index: number) => {
-        const newOpenItems = new Set(openItems);
-        if (newOpenItems.has(index)) {
-            newOpenItems.delete(index);
-        } else {
-            newOpenItems.add(index);
-        }
-        setOpenItems(newOpenItems);
-    };
-
-    const selectedCategory = categories.find(cat => cat.value === category);
 
     return (
         <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50 p-4">
@@ -126,10 +150,10 @@ export default function CreativeTop10Creator() {
                         </h1>
                         <Sparkles className="w-8 h-8 text-purple-500" />
                     </div>
-                    <p className="text-gray-600 text-lg">Create your ultimate ranked list with style</p>
+                    <p className="text-gray-600 text-lg">Create your ultimate ranked list with ease</p>
                 </div>
 
-                <div onSubmit={handleSubmit} className="space-y-6">
+                <form onSubmit={handleSubmit} className="space-y-6">
                     {/* Title and Category Card */}
                     <Card className="border-0 shadow-lg bg-white/80 backdrop-blur-sm">
                         <CardHeader className="pb-4">
@@ -147,7 +171,7 @@ export default function CreativeTop10Creator() {
                                         id="title"
                                         placeholder="e.g., Best Movies of All Time"
                                         value={title}
-                                        onChange={(e: React.ChangeEvent<HTMLInputElement>) => setTitle(e.target.value)}
+                                        onChange={(e) => setTitle(e.target.value)}
                                         className="border-gray-200 focus:border-blue-500 focus:ring-blue-500"
                                         required
                                     />
@@ -155,189 +179,237 @@ export default function CreativeTop10Creator() {
 
                                 <div className="space-y-2">
                                     <Label className="text-sm font-medium">Category</Label>
-                                    <Select value={category} onValueChange={manageSetCategory}>
-                                        <SelectTrigger className="border-gray-200 focus:border-blue-500 focus:ring-blue-500">
-                                            <SelectValue placeholder="Choose a category" />
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                            {categories.map(cat => (
-                                                <SelectItem key={cat.value} value={cat.value}>
-                                                    {cat.label}
-                                                </SelectItem>
-                                            ))}
-                                        </SelectContent>
-                                    </Select>
-                                </div>
-                            </div>
 
-                            {otherSelection && (
-                                <div className="space-y-2">
-                                    <Label className="text-sm font-medium">Custom Category</Label>
-                                    <Input
-                                        placeholder="Enter your custom category"
-                                        value={category}
-                                        onChange={(e: React.ChangeEvent<HTMLInputElement>) => setOtherCategory(e.target.value)}
-                                        className="border-gray-200 focus:border-blue-500 focus:ring-blue-500"
+                                    <SearchSelect
+                                        options={categories}
+                                        placeholder="Select a category"
+                                        onValueChange={(value) => {
+                                            setCategory(value);
+                                            console.log("Selected:", value);
+                                        }}
                                     />
                                 </div>
-                            )}
-
-                            {selectedCategory && (
-                                <div className="flex items-center gap-2 pt-2">
-                                    <Badge variant="secondary" className={`bg-gradient-to-r ${selectedCategory.gradient} text-white`}>
-                                        {selectedCategory.label}
-                                    </Badge>
-                                </div>
-                            )}
+                            </div>
                         </CardContent>
                     </Card>
 
-                    {/* Items Section */}
+                    {/* Add Items Section */}
                     <Card className="border-0 shadow-lg bg-white/80 backdrop-blur-sm">
                         <CardHeader className="pb-4">
                             <CardTitle className="flex items-center gap-2">
                                 <div className="w-2 h-2 bg-purple-500 rounded-full"></div>
-                                Your Top 10 Items
+                                Add Items to Your List
                             </CardTitle>
-                            <CardDescription>Add details for each item in your list</CardDescription>
+                            <CardDescription>
+                                {items.length > 0 
+                                    ? `You've added ${items.length} items (max 10)`
+                                    : "Search for items to add to your list"}
+                            </CardDescription>
                         </CardHeader>
                         <CardContent className="space-y-4">
-                            {items.map((item, index) => (
-                                <Card key={item.id} className="border border-gray-200 bg-gradient-to-r from-gray-50 to-white">
-                                    <Collapsible open={openItems.has(index)} onOpenChange={() => toggleItem(index)}>
-                                        <CollapsibleTrigger asChild>
-                                            <CardHeader className="cursor-pointer hover:bg-gray-50 transition-colors pb-3">
-                                                <div className="flex items-center justify-between">
+                            {/* Search and Add Items */}
+                            <div className="space-y-4">
+                                <div className="relative">
+                                    <div className="flex items-center gap-2">
+                                        <Search className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
+                                        <Input
+                                            type="search"
+                                            placeholder={`Search for ${category ? category : 'items'} to add...`}
+                                            value={searchQuery}
+                                            onChange={(e) => setSearchQuery(e.target.value)}
+                                            className="pl-10 border-gray-200 focus:border-purple-500 focus:ring-purple-500"
+                                            disabled={!category}
+                                        />
+                                    </div>
+                                    {!category && (
+                                        <p className="text-sm text-gray-500 mt-1">
+                                            Please select a category first
+                                        </p>
+                                    )}
+                                </div>
+
+                                {/* Search Results */}
+                                {isSearching && (
+                                    <div className="text-center py-4">
+                                        <p>Searching...</p>
+                                    </div>
+                                )}
+
+                                {searchResults.length > 0 && (
+                                    <div className="space-y-2">
+                                        <h3 className="text-sm font-medium">Search Results</h3>
+                                        <div className="grid grid-cols-1 gap-2">
+                                            {searchResults.map((result, index) => (
+                                                
+                                                <div 
+                                                    key={result['result']["@id"] || index} 
+                                                    className="flex items-center justify-between p-3 border border-gray-200 rounded-lg hover:bg-gray-50 cursor-pointer"
+                                                    onClick={() => handleAddItem(result)}
+                                                >
                                                     <div className="flex items-center gap-3">
-                                                        <div className="w-8 h-8 bg-gradient-to-r from-blue-500 to-purple-500 rounded-full flex items-center justify-center text-white font-bold text-sm">
-                                                            {index + 1}
-                                                        </div>
+                                                        {result?.result.image && (
+                                                            <img 
+                                                                src={result.result.image.contentUrl || ""} 
+                                                                alt={result.result.name}
+                                                                className="w-10 h-10 object-cover rounded"
+                                                            />
+                                                        )}
                                                         <div>
-                                                            <CardTitle className="text-lg">
-                                                                {item.title || "Untitled Item"}
-                                                            </CardTitle>
-                                                            {item.description && (
-                                                                <CardDescription className="text-sm line-clamp-1">
-                                                                    {item.description}
-                                                                </CardDescription>
+                                                            <p className="font-medium">{result.result.name}</p>
+                                                            {result.result.description && (
+                                                                <p className="text-sm text-gray-500 line-clamp-1">
+                                                                    {result.result.description}
+                                                                </p>
                                                             )}
                                                         </div>
                                                     </div>
-                                                    {openItems.has(index) ? 
-                                                        <ChevronUp className="w-5 h-5 text-gray-500" /> : 
-                                                        <ChevronDown className="w-5 h-5 text-gray-500" />
-                                                    }
+                                                    <Plus className="w-5 h-5 text-purple-500" />
                                                 </div>
-                                            </CardHeader>
-                                        </CollapsibleTrigger>
-                                        <CollapsibleContent>
-                                            <CardContent className="pt-0 space-y-4">
-                                                <Separator />
-                                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                                    <div className="space-y-2">
-                                                        <Label className="text-sm font-medium flex items-center gap-2">
-                                                            <div className="w-1 h-1 bg-gray-400 rounded-full"></div>
-                                                            Title
-                                                        </Label>
-                                                        <Input
-                                                            placeholder="Item title"
-                                                            value={item.title}
-                                                            onChange={(e: React.ChangeEvent<HTMLInputElement>) => handleItemChange(index, "title", e.target.value)}
-                                                            className="border-gray-200 focus:border-purple-500 focus:ring-purple-500"
-                                                        />
-                                                    </div>
+                                            ))}
+                                        </div>
+                                    </div>
+                                )}
 
-                                                    <div className="space-y-2">
-                                                        <Label className="text-sm font-medium flex items-center gap-2">
-                                                            <div className="w-1 h-1 bg-gray-400 rounded-full"></div>
-                                                            Position (1-10)
-                                                        </Label>
-                                                        <Input
-                                                            type="number"
-                                                            min={1}
-                                                            max={10}
-                                                            value={item.position}
-                                                            onChange={(e: React.ChangeEvent<HTMLInputElement>) => handleItemChange(index, "position", Number(e.target.value))}
-                                                            className="border-gray-200 focus:border-purple-500 focus:ring-purple-500"
-                                                        />
-                                                    </div>
+                                {searchQuery && searchResults.length === 0 && !isSearching && (
+                                    <div className="flex items-center justify-between p-3 border border-gray-200 rounded-lg">
+                                        <p>No results found for "{searchQuery}"</p>
+                                        <Button 
+                                            variant="outline" 
+                                            size="sm"
+                                            onClick={handleManualAdd}
+                                        >
+                                            Add manually
+                                        </Button>
+                                    </div>
+                                )}
+                            </div>
 
-                                                    <div className="md:col-span-2 space-y-2">
-                                                        <Label className="text-sm font-medium flex items-center gap-2">
-                                                            <div className="w-1 h-1 bg-gray-400 rounded-full"></div>
-                                                            Description
-                                                        </Label>
-                                                        <Textarea
-                                                            placeholder="Why does this item deserve its ranking?"
-                                                            value={item.description}
-                                                            onChange={(e: any) => handleItemChange(index, "description", e.target.value)}
-                                                            className="border-gray-200 focus:border-purple-500 focus:ring-purple-500 min-h-[80px]"
-                                                            rows={3}
-                                                        />
+                            {/* Current List Items */}
+                            {items.length > 0 && (
+                                <div className="space-y-4">
+                                    <Separator />
+                                    <h3 className="text-sm font-medium">Your List ({items.length}/10)</h3>
+                                    
+                                    <div className="space-y-3">
+                                        {items.map((item) => (
+                                            <Card key={item.id} className="border border-gray-200">
+                                                <CardHeader className="pb-3">
+                                                    <div className="flex items-center justify-between">
+                                                        <div className="flex items-center gap-3">
+                                                            <div className="w-8 h-8 bg-gradient-to-r from-blue-500 to-purple-500 rounded-full flex items-center justify-center text-white font-bold text-sm">
+                                                                {item.position}
+                                                            </div>
+                                                            <div>
+                                                                <CardTitle className="text-lg">
+                                                                    {item.title}
+                                                                </CardTitle>
+                                                                {item.description && (
+                                                                    <CardDescription className="text-sm line-clamp-1">
+                                                                        {item.description}
+                                                                    </CardDescription>
+                                                                )}
+                                                            </div>
+                                                        </div>
+                                                        <div className="flex items-center gap-2">
+                                                            <Button 
+                                                                variant="ghost" 
+                                                                size="sm"
+                                                                onClick={() => setActiveEditItem(activeEditItem === item.id ? null : item.id)}
+                                                            >
+                                                                {activeEditItem === item.id ? 'Done' : 'Edit'}
+                                                            </Button>
+                                                            <Button 
+                                                                variant="ghost" 
+                                                                size="sm"
+                                                                onClick={() => handleRemoveItem(item.id)}
+                                                            >
+                                                                <X className="w-4 h-4 text-red-500" />
+                                                            </Button>
+                                                        </div>
                                                     </div>
+                                                </CardHeader>
 
-                                                    <div className="space-y-2">
-                                                        <Label className="text-sm font-medium flex items-center gap-2">
-                                                            <Link className="w-3 h-3" />
-                                                            External URL
-                                                        </Label>
-                                                        <Input
-                                                            type="url"
-                                                            placeholder="https://example.com"
-                                                            value={item.externalUrl}
-                                                            onChange={(e: React.ChangeEvent<HTMLInputElement>) => handleItemChange(index, "externalUrl", e.target.value)}
-                                                            className="border-gray-200 focus:border-purple-500 focus:ring-purple-500"
-                                                        />
-                                                    </div>
+                                                {activeEditItem === item.id && (
+                                                    <CardContent className="pt-0 space-y-4">
+                                                        <Separator />
+                                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                                            <div className="space-y-2">
+                                                                <Label className="text-sm font-medium">Title</Label>
+                                                                <Input
+                                                                    value={item.title}
+                                                                    onChange={(e) => handleItemChange(item.id, "title", e.target.value)}
+                                                                    className="border-gray-200 focus:border-purple-500 focus:ring-purple-500"
+                                                                />
+                                                            </div>
 
-                                                    <div className="space-y-2">
-                                                        <Label className="text-sm font-medium flex items-center gap-2">
-                                                            <Image className="w-3 h-3" />
-                                                            Image URL
-                                                        </Label>
-                                                        <Input
-                                                            type="url"
-                                                            placeholder="https://example.com/image.jpg"
-                                                            value={item.imageUrl}
-                                                            onChange={(e: React.ChangeEvent<HTMLInputElement>) => handleItemChange(index, "imageUrl", e.target.value)}
-                                                            className="border-gray-200 focus:border-purple-500 focus:ring-purple-500"
-                                                        />
-                                                    </div>
+                                                            <div className="space-y-2">
+                                                                <Label className="text-sm font-medium">Position (1-10)</Label>
+                                                                <Input
+                                                                    type="number"
+                                                                    min={1}
+                                                                    max={10}
+                                                                    value={item.position}
+                                                                    onChange={(e) => handlePositionChange(item.id, parseInt(e.target.value))}
+                                                                    className="border-gray-200 focus:border-purple-500 focus:ring-purple-500"
+                                                                />
+                                                            </div>
 
-                                                    <div className="md:col-span-2 space-y-2">
-                                                        <Label className="text-sm font-medium flex items-center gap-2">
-                                                            <Upload className="w-3 h-3" />
-                                                            Upload Image (Optional)
-                                                        </Label>
-                                                        <Input
-                                                            type="file"
-                                                            accept="image/*"
-                                                            onChange={(e: React.ChangeEvent<HTMLInputElement>) => handleItemChange(index, "imageFile", e.target.files?.[0])}
-                                                            className="border-gray-200 focus:border-purple-500 focus:ring-purple-500 file:bg-purple-50 file:text-purple-700 file:border-0 file:rounded-md file:px-3 file:py-1 file:mr-3"
-                                                        />
-                                                    </div>
-                                                </div>
-                                            </CardContent>
-                                        </CollapsibleContent>
-                                    </Collapsible>
-                                </Card>
-                            ))}
+                                                            <div className="md:col-span-2 space-y-2">
+                                                                <Label className="text-sm font-medium">Description</Label>
+                                                                <Textarea
+                                                                    value={item.description}
+                                                                    onChange={(e) => handleItemChange(item.id, "description", e.target.value)}
+                                                                    className="border-gray-200 focus:border-purple-500 focus:ring-purple-500 min-h-[80px]"
+                                                                    rows={3}
+                                                                />
+                                                            </div>
+
+                                                            <div className="space-y-2">
+                                                                <Label className="text-sm font-medium">Image URL</Label>
+                                                                <Input
+                                                                    type="url"
+                                                                    placeholder="https://example.com/image.jpg"
+                                                                    value={item.imageUrl || ""}
+                                                                    onChange={(e) => handleItemChange(item.id, "imageUrl", e.target.value)}
+                                                                    className="border-gray-200 focus:border-purple-500 focus:ring-purple-500"
+                                                                />
+                                                            </div>
+
+                                                            <div className="space-y-2">
+                                                                <Label className="text-sm font-medium">External URL</Label>
+                                                                <Input
+                                                                    type="url"
+                                                                    placeholder="https://example.com"
+                                                                    value={item.externalUrl || ""}
+                                                                    onChange={(e) => handleItemChange(item.id, "externalUrl", e.target.value)}
+                                                                    className="border-gray-200 focus:border-purple-500 focus:ring-purple-500"
+                                                                />
+                                                            </div>
+                                                        </div>
+                                                    </CardContent>
+                                                )}
+                                            </Card>
+                                        ))}
+                                    </div>
+                                </div>
+                            )}
                         </CardContent>
                     </Card>
 
                     {/* Submit Button */}
                     <div className="flex justify-center pt-6">
                         <Button
-                            onClick={handleSubmit}
+                            type="submit"
                             size="lg"
-                            className="bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-white px-8 py-3 rounded-full shadow-lg hover:shadow-xl transition-all duration-200 transform hover:scale-105"
+                            disabled={items.length === 0}
+                            className="bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-white px-8 py-3 rounded-full shadow-lg hover:shadow-xl transition-all duration-200 transform hover:scale-105 disabled:opacity-50 disabled:transform-none"
                         >
                             <Sparkles className="w-5 h-5 mr-2" />
                             Create Amazing List
                             <Trophy className="w-5 h-5 ml-2" />
                         </Button>
                     </div>
-                </div>
+                </form>
             </div>
         </div>
     );

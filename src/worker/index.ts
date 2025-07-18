@@ -4,6 +4,12 @@ import { cors } from "hono/cors";
 interface Env {
     MITH_DB: D1Database;
     MITH_BUCKET: R2Bucket;
+    VITE_GAPI_KEY: string;
+    VITE_GAPI_BASE_URL: string;
+}
+
+interface GoogleSearchResult {
+    itemListElement : Object[];
 }
 
 const app = new Hono<{ Bindings: Env }>();
@@ -88,6 +94,31 @@ app.post("/api/new", async (c) => {
     }
 
     return c.json({ message: "✅ List created successfully", id: listId });
+});
+
+app.get("/api/search", async (c) => {
+    const query = c.req.query("q") || "";
+    const type = c.req.query("type") || "all";
+    if (!query) {
+        return c.json({ results: [] });
+    }   
+
+    // User google knowledge graph API to search for entities
+    const baseUrl = c.env.VITE_GAPI_BASE_URL || "https://kgsearch.googleapis.com/v1/entities:search?key=AIzaSyA43KPQxb0JqDTBd3kv8yj3kb7RDr49mBA&query="; 
+    const url = `${baseUrl}${encodeURIComponent(query)}&types=${type}&limit=5&indent=True`;
+
+    try {
+        const response = await fetch(url);
+        const data : GoogleSearchResult = await response.json();
+
+        return c.json({results : data.itemListElement })
+        
+    } catch (error) {
+        console.log('ERORR', error);
+        
+        return c.json({error : "Failed to get autocomplete suggestions"}, 500);
+    }
+
 });
 
 export default app;
