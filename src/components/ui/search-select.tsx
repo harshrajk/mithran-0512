@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import {
   Select,
   SelectContent,
@@ -24,16 +24,24 @@ export function SearchSelect({
 }: SearchSelectProps) {
   const [searchTerm, setSearchTerm] = useState("");
   const [open, setOpen] = useState(false);
+  const inputRef = useRef<HTMLInputElement | null>(null);
 
   const filteredOptions = options.filter((option) =>
     option.label.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
+  const setSelectOpen = (isOpen: boolean) => {  
+    setOpen(isOpen);
+    if (inputRef.current) {
+      inputRef.current.focus();
+    }
+  };
+
   return (
-    <Select open={open} onOpenChange={setOpen} onValueChange={onValueChange}>
+    <Select open={open} onOpenChange={setSelectOpen} onValueChange={onValueChange}>
       <SelectTrigger className="w-[180px]">
         <SelectValue placeholder={placeholder} />
-        <ChevronDown className="h-4 w-4 opacity-50" />
+        {/* <ChevronDown className="h-4 w-4 opacity-50" /> */}
       </SelectTrigger>
       <SelectContent className="p-0">
         <div className="relative p-2 border-b">
@@ -43,6 +51,8 @@ export function SearchSelect({
             className="pl-10"
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
+            ref={inputRef}
+            autoFocus
           />
           {searchTerm && (
             <X

@@ -2,6 +2,7 @@ import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
 import Home from "./pages/Home";
 import NewList from "./pages/NewList";
 import Maintenance from "./pages/Maintenance";
+import Listing from "./pages/Listing";
 
 export default function App() {
   console.log(import.meta.env.VITE_IS_MAINTENANCE_MODE === "true");
@@ -18,6 +19,7 @@ export default function App() {
         
         <Route path="/maintenance" element={<Maintenance />} />
         <Route path="/new" element={<NewList />} />
+        <Route path="/lists/:id" element={<Listing />} />
       </Routes>
     </Router>
   );

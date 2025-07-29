@@ -37,7 +37,7 @@ app.post("/api/new", async (c) => {
     for (let index = 0; index < items.length; index++) {
         const item = items[index];
         const image = images[index];
-        let imageUrl = item.image_url ?? null;
+        let imageUrl = item.imageUrl ?? null;
 
         if (image instanceof File && image.size > 0) {
             const key = `lists/${Date.now()}_${index}_${image.name}`;
@@ -63,7 +63,7 @@ app.post("/api/new", async (c) => {
             description: item.description ?? "",
             position: item.position ?? 0,
             image_url: imageUrl,
-            external_url: item.external_url ?? null,
+            external_url: item.externalUrl ?? null,
         });
     }
 
@@ -119,6 +119,28 @@ app.get("/api/search", async (c) => {
         return c.json({error : "Failed to get autocomplete suggestions"}, 500);
     }
 
+});
+
+app.get("/api/lists/:id", async (c) => {
+    const listId = c.req.param("id");
+    if (!listId) {
+        return c.json({ error: "List ID is required" }, 400);
+    }       
+    const result = await c.env.MITH_DB
+        .prepare("SELECT * FROM lists WHERE id = ?")
+        .bind(listId)
+        .first();   
+    if (!result) {
+        return c.json({ error: "List not found" }, 404);
+    }   
+    const itemsResult = await c.env.MITH_DB
+        .prepare("SELECT * FROM list_items WHERE list_id = ? ORDER BY position")
+        .bind(listId)
+        .all(); 
+    return c.json({
+        ...result,
+        items: itemsResult.results
+    });
 });
 
 export default app;

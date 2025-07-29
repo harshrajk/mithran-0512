@@ -85,7 +85,7 @@ export default function Home() {
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {lists.map((list) => (
-              <Link to={`/list/${list.id}`} key={list.id} className="group">
+              <Link to={`/lists/${list.id}`} key={list.id} className="group">
                 <Card className="border-0 shadow-lg bg-white/80 backdrop-blur-sm h-full flex flex-col transition-all duration-300 group-hover:-translate-y-1 group-hover:shadow-xl">
                   <CardHeader className="pb-3">
                     <CardTitle className="text-xl font-semibold text-gray-800 line-clamp-2">
